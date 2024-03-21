@@ -26,13 +26,26 @@ class MyRNN(tf.keras.Model):
         ## - Define an embedding component to embed the word indices into a trainable embedding space.
         ## - Define a recurrent component to reason with the sequence of data. 
         ## - You may also want a dense layer near the end...    
+        self.embedding_matrix = tf.keras.layers.Embedding(self.vocab_size,self.embed_size)
+        self.RNN_component = tf.keras.layers.LSTM(self.rnn_size,return_sequences=True,return_state=False)
+        self.dense_layer_1  = tf.keras.layers.Dense(224,activation=None,use_bias=True,kernel_initializer="glorot_uniform",bias_initializer="zeros")
+        self.leaky_relu = tf.keras.layers.LeakyReLU(alpha=0.3)
+        self.dense_layer_2 = tf.keras.layers.Dense(self.vocab_size,activation='softmax',use_bias=True,kernel_initializer="glorot_uniform",bias_initializer="zeros")
+
 
     def call(self, inputs):
         """
         - You must use an embedding layer as the first layer of your network (i.e. tf.nn.embedding_lookup or tf.keras.layers.Embedding)
         - You must use an LSTM or GRU as the next layer.
         """
-        return inputs
+        embed_1 = self.embedding_matrix(inputs)
+        rnn = self.RNN_component(embed_1)
+        dense_1 = self.dense_layer_1(rnn)
+        relu = self.leaky_relu(dense_1)
+        dense_2 = self.dense_layer_2(relu)
+
+
+        return dense_2
 
     ##########################################################################################
 
@@ -62,6 +75,13 @@ class MyRNN(tf.keras.Model):
 
 
 #########################################################################################
+        
+def perplexity_calculate(y_true, y_pred):
+    #logits = np.argmax(y_pred, axis=1)
+    #logits = np.reshape(len(y_true))
+    loss = tf.keras.losses.sparse_categorical_crossentropy(y_true,y_pred)
+    perplexity = tf.exp(tf.reduce_mean(loss))
+    return perplexity
 
 def get_text_model(vocab):
     '''
@@ -74,12 +94,12 @@ def get_text_model(vocab):
     model = MyRNN(len(vocab))
 
     ## TODO: Define your own loss and metric for your optimizer
-    loss_metric = None 
-    acc_metric  = None
+    loss_metric = tf.keras.losses.SparseCategoricalCrossentropy(False)
+    acc_metric  = perplexity_calculate
 
     ## TODO: Compile your model using your choice of optimizer, loss, and metrics
     model.compile(
-        optimizer=None, 
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.01), 
         loss=loss_metric, 
         metrics=[acc_metric],
     )
@@ -101,10 +121,27 @@ def main():
     ##   from train_x and test_x. You also need to drop the first element from train_y and test_y.
     ##   If you don't do this, you will see very, very small perplexities.
     ##   HINT: You might be able to find this somewhere...
-    vocab = None
+    train_file_path = '/Users/navyasahay/Desktop/DL/homework-4p-language-models-nsahay2004/data/train.txt'
+    test_file_path  = '/Users/navyasahay/Desktop/DL/homework-4p-language-models-nsahay2004/data/test.txt'
 
-    X0, Y0  = None, None
-    X1, Y1  = None, None
+    window_size = 5
+
+
+
+    train_data, test_data, vocab = get_data(train_file_path,test_file_path)
+    train_data = np.array(train_data)
+    test_data = np.array(test_data)
+
+    train_remainder = (len(train_data) - 1)%window_size
+    test_remainder = (len(test_data) - 1)%window_size
+
+
+    train_data = train_data[:-train_remainder]
+    test_data = test_data[:-test_remainder]
+
+
+    X0, Y0  = train_data[:-1].reshape(-1, window_size), train_data[1:].reshape(-1, window_size)
+    X1, Y1  = test_data[:-1].reshape(-1, window_size), test_data[1:].reshape(-1, window_size)
 
     ## TODO: Get your model that you'd like to use
     args = get_text_model(vocab)

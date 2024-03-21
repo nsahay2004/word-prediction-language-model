@@ -19,7 +19,37 @@ def get_data(train_file, test_file):
     # Hint: You might not use all of the initialized variables depending on how you implement preprocessing. 
     vocabulary, vocab_size, train_data, test_data = {}, 0, [], []
 
+
+
+
     ## TODO: Implement pre-processing for the data files. See notebook for help on this.
+    train_read = open(train_file, 'r')
+    train_lines = train_read.readlines()
+    test_read = open(test_file, 'r')
+    test_lines = test_read.readlines()
+
+    
+    
+
+    for tr_l in train_lines:
+        train_data.extend(tr_l.split())
+    
+    
+    for t_l in test_lines:
+       test_data.extend(t_l.split())
+    
+    train_data = [t.lower() for t in train_data]
+    test_data = [t.lower() for t in test_data]
+
+
+    
+    unique_tokens = np.unique(train_data)
+
+    count = 0 
+
+    for u in unique_tokens:
+        vocabulary[u] = count
+        count += 1 
 
     # Sanity Check, make sure there are no new words in the test data.
     assert reduce(lambda x, y: x and (y in vocabulary), test_data)
